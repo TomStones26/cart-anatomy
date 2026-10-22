@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# 个人材料（求职用，不进公开仓库）
+项目介绍_简历版.md
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 临时文件
+*.tmp
+*.bak
+~$*
+
+# Power BI 本地缓存与锁文件（.pbix 本体需要提交，见 CONTRIBUTING.md）
+*.pbix~
+*.pbix.tmp
+*.~vsd*
+.pbixSettings/

@@ -1,0 +1,5 @@
+﻿原字段名,规范后字段名
+加购_count,add_to_cart_count
+收藏_count,favorite_count
+浏览_count,view_count
+点击_count,click_count

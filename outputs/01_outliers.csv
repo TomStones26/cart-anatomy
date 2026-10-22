@@ -1,0 +1,9 @@
+﻿表,字段,min,max
+orders,quantity,1.0,5.0
+orders,unit_price,10.28,7988.25
+orders,actual_payment,8.27,37754.27
+users,age,18.0,63.0
+users,account_balance,0.55,40485.99
+products,price,10.28,7988.25
+products,sales_count,2.0,10000.0
+user_behaviors,duration_seconds,0.0,600.0

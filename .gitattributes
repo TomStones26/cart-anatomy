@@ -1,0 +1,9 @@
+# 统一换行符，避免跨平台差异
+* text=auto
+
+# CSV 保持字节原样：数据以 CRLF 存储，SQL 脚本的
+# LINES TERMINATED BY '\r\n' 依赖这一点，不能被 git 转换
+*.csv -text -diff
+*.png binary
+*.pbix binary
+*.pbix~ binary

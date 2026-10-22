@@ -1,0 +1,7 @@
+﻿表名,主键,总数,唯一数,重复数
+orders,order_id,15000,15000,0
+products,product_id,2000,2000,0
+product_features,product_id,2000,2000,0
+users,user_id,5000,5000,0
+user_features,user_id,5000,5000,0
+user_behaviors,behavior_id,30000,30000,0

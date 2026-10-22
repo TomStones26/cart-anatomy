@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>淘宝消费数据分析看板</title>
+<style>
+  :root{
+    --bg:#0B1220; --panel:#17223A; --panel2:#1E2C47; --line:#2C3E5E;
+    --text:#E8EEF9; --muted:#93A7C4; --dim:#6F86A6;
+    --accent:#FF6B35; --accent2:#38BDF8; --accent3:#A78BFA;
+    --good:#34D399; --warn:#FBBF24; --bad:#F87171;
+    --r:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:radial-gradient(1200px 600px at 80% -10%, #16233B 0%, var(--bg) 55%) fixed;
+    color:var(--text); font-family:-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+    min-height:100vh; padding:22px 26px 60px;
+    -webkit-font-smoothing:antialiased;
+  }
+  header{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;
+    flex-wrap:wrap;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--line)}
+  .brand{display:flex;align-items:center;gap:14px}
+  .logo{width:38px;height:38px;border-radius:11px;
+    background:linear-gradient(135deg,var(--accent),#FF9A5C);
+    display:grid;place-items:center;font-weight:800;font-size:17px;color:#1A0E06;
+    box-shadow:0 6px 18px rgba(255,107,53,.35)}
+  h1{font-size:20px;letter-spacing:.3px;font-weight:700}
+  .sub{font-size:12px;color:var(--muted);margin-top:3px}
+  nav{display:flex;gap:6px;background:var(--panel);padding:5px;border-radius:12px;border:1px solid var(--line)}
+  nav button{background:none;border:0;color:var(--muted);font-size:13px;padding:8px 15px;
+    border-radius:8px;cursor:pointer;font-family:inherit;transition:.18s;white-space:nowrap}
+  nav button:hover{color:var(--text);background:var(--panel2)}
+  nav button.on{background:linear-gradient(135deg,var(--accent),#FF8A4C);color:#1A0E06;font-weight:700}
+  .page{display:none}
+  .page.on{display:block}
+  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+  .card{background:linear-gradient(180deg,var(--panel) 0%,#141F33 100%);
+    border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;
+    position:relative;overflow:hidden;box-shadow:0 4px 18px rgba(0,0,0,.25)}
+  .card::after{content:"";position:absolute;inset:0 0 auto 0;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent)}
+  .card h3{font-size:13px;font-weight:600;color:var(--muted);letter-spacing:.4px;
+    margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .card h3 .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex:none}
+  .c3{grid-column:span 3}.c4{grid-column:span 4}.c5{grid-column:span 5}
+  .c6{grid-column:span 6}.c7{grid-column:span 7}.c8{grid-column:span 8}.c12{grid-column:span 12}
+
+  /* KPI */
+  .kpi{display:flex;flex-direction:column;gap:6px;padding:18px 20px}
+  .kpi .label{font-size:12px;color:var(--muted);letter-spacing:.5px}
+  .kpi .val{font-size:30px;font-weight:750;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+  .kpi .val span{font-size:15px;color:var(--muted);font-weight:500;margin-left:4px}
+  .kpi .hint{font-size:11.5px;color:var(--dim)}
+  .kpi.a{border-color:rgba(255,107,53,.35)}
+  .kpi.a .val{color:#FFB08A}
+  .kpi.b .val{color:#7DD3FC}
+  .kpi.c .val{color:#C4B5FD}
+  .kpi.d .val{color:#6EE7B7}
+
+  svg{display:block;width:100%;overflow:visible}
+  .axis text{fill:var(--dim);font-size:11px}
+  .axis line{stroke:var(--line)}
+  .gl{stroke:rgba(255,255,255,.055);stroke-dasharray:3 5}
+  .lbl{fill:var(--muted);font-size:11.5px}
+  .val{fill:var(--text);font-size:11.5px;font-variant-numeric:tabular-nums}
+  .legend{display:flex;flex-wrap:wrap;gap:10px 16px;margin-top:10px;font-size:11.5px;color:var(--muted)}
+  .legend i{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:6px;vertical-align:1px}
+
+  table{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
+  th{text-align:right;color:var(--dim);font-weight:600;font-size:11.5px;padding:8px 10px;
+    border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  td{text-align:right;padding:8px 10px;border-bottom:1px solid rgba(35,48,74,.5);color:#CFDBEC}
+  tbody tr:hover td{background:rgba(56,189,248,.05)}
+  .bar-cell{position:relative}
+  .bar-cell .bg{position:absolute;left:0;top:50%;transform:translateY(-50%);
+    height:16px;background:linear-gradient(90deg,rgba(255,107,53,.32),rgba(255,107,53,.08));
+    border-radius:3px;z-index:0}
+  .bar-cell span{position:relative;z-index:1}
+
+  .catgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+  .chip{background:var(--panel2);border:1px solid var(--line);border-radius:9px;
+    padding:11px 9px;text-align:center;font-size:12px;color:#C9D6E8;transition:.18s}
+  .chip:hover{border-color:var(--accent);transform:translateY(-1px)}
+  .chip b{display:block;font-size:13px;color:#fff;margin-bottom:3px;font-weight:600}
+  .chip small{color:var(--muted);font-size:10.5px}
+  footer{margin-top:22px;color:var(--dim);font-size:11px;line-height:1.7}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="logo">淘</div>
+    <div>
+      <h1>淘宝用户消费数据分析</h1>
+      <div class="sub">2025-09 至 2026-03 · 15,000 订单 / 5,000 用户 / 2,000 商品 / 30,000 条行为</div>
+    </div>
+  </div>
+  <nav id="tabs">
+    <button class="on" data-p="p1">经营总览</button>
+    <button data-p="p2">用户分析</button>
+    <button data-p="p3">RFM 分层</button>
+    <button data-p="p4">商品与漏斗</button>
+  </nav>
+</header>
+
+<!-- ============ 页1 经营总览 ============ -->
+<section class="page on" id="p1">
+  <div class="grid" style="margin-bottom:14px">
+    <div class="card kpi a c3"><div class="label">总销售额</div><div class="val" id="k_gmv">–</div><div class="hint">排除已取消订单</div></div>
+    <div class="card kpi b c3"><div class="label">有效订单量</div><div class="val" id="k_ord">–</div><div class="hint">已取消 1,054 单不计入</div></div>
+    <div class="card kpi c c3"><div class="label">客单价 AOV</div><div class="val" id="k_aov">–</div><div class="hint">销售额 ÷ 有效订单</div></div>
+    <div class="card kpi d c3"><div class="label">下单用户人均消费</div><div class="val" id="k_arpu">–</div><div class="hint">销售额 ÷ 4,743 位下单用户</div></div>
+  </div>
+  <div class="grid">
+    <div class="card c7"><h3><span class="dot"></span>月度销售额趋势</h3><div id="ch_monthly"></div></div>
+    <div class="card c5"><h3><span class="dot"></span>订单状态分布</h3><div id="ch_status"></div></div>
+    <div class="card c12"><h3><span class="dot"></span>品类销售额排行榜</h3><div id="ch_cat"></div></div>
+  </div>
+</section>
+
+<!-- ============ 页2 用户分析 ============ -->
+<section class="page" id="p2">
+  <div class="grid">
+    <div class="card c3"><h3><span class="dot"></span>性别分布</h3><div id="ch_gender"></div></div>
+    <div class="card c5"><h3><span class="dot"></span>年龄分布</h3><div id="ch_age"></div></div>
+    <div class="card c4"><h3><span class="dot"></span>会员等级消费贡献</h3><div id="ch_member"></div></div>
+    <div class="card c12"><h3><span class="dot"></span>用户城市分布 TOP15<span style="color:var(--dim);font-weight:400;margin-left:6px">各城市人数接近（242~272），地域分布均匀</span></h3><div id="ch_city"></div></div>
+  </div>
+</section>
+
+<!-- ============ 页3 RFM ============ -->
+<section class="page" id="p3">
+  <div class="grid">
+    <div class="card c7"><h3><span class="dot"></span>八类用户分层明细</h3><div id="tb_rfm"></div></div>
+    <div class="card c5"><h3><span class="dot"></span>各层消费总额</h3><div id="ch_seg"></div></div>
+    <div class="card c12"><h3><span class="dot"></span>R-F-M 散点（Recency 越低越好，Frequency 越高越好）</h3><div id="ch_scatter"></div><div class="legend" id="lg_scatter"></div></div>
+  </div>
+</section>
+
+<!-- ============ 页4 商品与漏斗 ============ -->
+<section class="page" id="p4">
+  <div class="grid">
+    <div class="card c4"><h3><span class="dot"></span>品类矩阵</h3><div class="catgrid" id="cat_chips"></div></div>
+    <div class="card c8"><h3><span class="dot"></span>行为漏斗（次数口径）</h3><div id="ch_funnel"></div></div>
+    <div class="card c12"><h3><span class="dot"></span>品类转化率：平均 vs 有效（过滤浏览量&lt;10）</h3><div id="tb_cv"></div></div>
+  </div>
+</section>
+
+<footer>
+  数据口径：销售额排除「已取消」订单；转化率为商品级 conversion_rate，有效转化率仅统计浏览量≥10 的商品；
+  RFM 覆盖 4,472 位有效消费用户（R 以发货日期计算）。所有数字由 SQL 与 Python 双实现实算，结果一致。
+</footer>
+
+<script id="payload" type="application/json">__DATA__</script>
+<script>
+const D = JSON.parse(document.getElementById('payload').textContent);
+const C = {accent:'#FF6B35', a2:'#38BDF8', a3:'#A78BFA', good:'#34D399', warn:'#FBBF24', bad:'#F87171'};
+const PALETTE = ['#FF6B35','#38BDF8','#A78BFA','#34D399','#FBBF24','#F87171','#22D3EE','#F9A8D4',
+                 '#93C5FD','#FCD34D','#86EFAC','#FDBA74','#C4B5FD','#67E8F9','#FCA5A5'];
+const SEGC = {'重要价值用户':'#34D399','重要保持用户':'#38BDF8','重要挽留用户':'#A78BFA',
+              '重要发展用户':'#22D3EE','一般价值用户':'#FBBF24','一般维持用户':'#94A3B8',
+              '新用户':'#FDBA74','流失用户':'#F87171'};
+
+// ---------- 工具 ----------
+const fmtW = v => v>=1e8 ? (v/1e8).toFixed(2)+' 亿'
+            : v>=1e4 ? (v/1e4).toFixed(v>=1e6?0:2)+' 万' : Math.round(v).toLocaleString();
+const fmtN = v => Math.round(v).toLocaleString();
+const el = id => document.getElementById(id);
+function svg(w,h){return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="xMidYMid meet">`;}
+function txt(x,y,s,cls='lbl',anchor='start'){return `<text x="${x}" y="${y}" class="${cls}" text-anchor="${anchor}">${s}</text>`;}
+function arc(cx,cy,r,r2,a0,a1){
+  const p=(a,rr)=>[cx+rr*Math.cos(a),cy+rr*Math.sin(a)];
+  const [x0,y0]=p(a0,r),[x1,y1]=p(a1,r),[x2,y2]=p(a1,r2),[x3,y3]=p(a0,r2);
+  const laf=(a1-a0)>Math.PI?1:0;
+  return `M${x0} ${y0}A${r} ${r} 0 ${laf} 1 ${x1} ${y1}L${x2} ${y2}A${r2} ${r2} 0 ${laf} 0 ${x3} ${y3}Z`;
+}
+
+// ---------- 1. 月度折线 ----------
+function drawMonthly(){
+  const box=el('ch_monthly'); if(!box) return;
+  const w=box.clientWidth||620, h=250, pad={l:52,r:18,t:26,b:34};
+  const d=D.monthly, max=Math.max(...d.map(x=>x.gmv))*1.12;
+  const iw=w-pad.l-pad.r, ih=h-pad.t-pad.b;
+  const X=i=>pad.l+iw*i/(d.length-1||1);
+  const Y=v=>pad.t+ih*(1-v/max);
+  let g='';
+  for(let i=0;i<=3;i++){const v=max*i/3;g+=`<line class="gl" x1="${pad.l}" y1="${Y(v)}" x2="${w-pad.r}" y2="${Y(v)}"/>`+txt(pad.l-8,Y(v)+4,fmtW(v),'lbl','end');}
+  const pts=d.map((x,i)=>[X(i),Y(x.gmv)]);
+  const line=pts.map((p,i)=>(i?'L':'M')+p[0]+' '+p[1]).join(' ');
+  const area=line+` L${pts[pts.length-1][0]} ${pad.t+ih} L${pts[0][0]} ${pad.t+ih} Z`;
+  let s=svg(w,h);
+  s+=`<defs><linearGradient id="ga" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${C.accent}" stop-opacity=".38"/>
+      <stop offset="100%" stop-color="${C.accent}" stop-opacity="0"/></linearGradient></defs>`;
+  s+=`<path d="${area}" fill="url(#ga)"/>`;
+  s+=`<path d="${line}" fill="none" stroke="${C.accent}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
+  d.forEach((x,i)=>{
+    s+=`<circle cx="${X(i)}" cy="${Y(x.gmv)}" r="3.6" fill="#0B1220" stroke="${C.accent}" stroke-width="2"/>`;
+    s+=txt(X(i),pad.t+ih+18,x.month.slice(2),'lbl','middle');
+    s+=`<title>${x.month}：${fmtW(x.gmv)} ／ ${x.orders} 单</title>`;
+  });
+  // 峰谷标注
+  let mi=d.reduce((a,x,i)=>x.gmv>d[a].gmv?i:a,0);
+  s+=txt(X(mi),Y(d[mi].gmv)-11,fmtW(d[mi].gmv),'val','middle');
+  // 残月提示：最后一个月的日期没到月末，避免把"数据不全"读成"销售暴跌"
+  const last=d[d.length-1];
+  if(last.partial){
+    const lx=X(d.length-1), ly=Y(last.gmv);
+    s+=`<line x1="${lx}" y1="${pad.t}" x2="${lx}" y2="${pad.t+ih}" stroke="${C.warn}" stroke-width="1" stroke-dasharray="4 4" opacity=".55"/>`;
+    s+=txt(lx-8,pad.t+12,'数据截至 '+last.cut,'lbl','end').replace('class="lbl"','class="lbl" fill="#FBBF24"');
+  }
+  s+=`</svg>`; box.innerHTML=s;
+}
+
+// ---------- 2. 订单状态环形 ----------
+function drawStatus(){
+  const box=el('ch_status'); if(!box) return;
+  const w=box.clientWidth||380, h=222, cx=w*0.35, cy=h/2, r=Math.min(w*0.26,82), r2=r*0.62;
+  const d=D.status, tot=d.reduce((a,x)=>a+x.n,0);
+  let a0=-Math.PI/2, s=svg(w,h), lg='';
+  d.forEach((x,i)=>{
+    const ang=x.n/tot*Math.PI*2, a1=a0+ang, col=PALETTE[i%PALETTE.length];
+    if(ang>0.002) s+=`<path d="${arc(cx,cy,r,r2,a0,a1)}" fill="${col}" opacity=".92"><title>${x.order_status}：${fmtN(x.n)} 单（${(x.n/tot*100).toFixed(2)}%）</title></path>`;
+    if(ang>0.22) {
+      const mid=(a0+a1)/2, lx=cx+Math.cos(mid)*(r+r2)/2, ly=cy+Math.sin(mid)*(r+r2)/2;
+      s+=txt(lx,ly+3.5,(x.n/tot*100).toFixed(0)+'%','val','middle');
+    }
+    lg+=`<span><i style="background:${col}"></i>${x.order_status} ${fmtN(x.n)}（${(x.n/tot*100).toFixed(2)}%）</span>`;
+    a0=a1;
+  });
+  s+=`<text x="${cx}" y="${cy-3}" text-anchor="middle" style="fill:#E8EEF9;font-size:20px;font-weight:700">${fmtN(tot)}</text>`;
+  s+=txt(cx,cy+15,'订单总数','lbl','middle');
+  s+=`</svg>`;
+  box.style.display='block';
+  box.innerHTML=s+`<div class="legend" style="justify-content:center;gap:8px 14px">${lg}</div>`;
+}
+
+// ---------- 3. 品类横向条 ----------
+function drawCat(){
+  const box=el('ch_cat'); if(!box) return;
+  const w=box.clientWidth||1100, rowH=26, h=D.category.length*rowH+24;
+  const pad={l:92,r:96,t:8,b:16}, iw=w-pad.l-pad.r, max=Math.max(...D.category.map(x=>x.gmv));
+  let s=svg(w,h);
+  D.category.forEach((x,i)=>{
+    const y=pad.t+i*rowH, bw=iw*x.gmv/max;
+    s+=`<rect x="${pad.l}" y="${y+5}" width="${Math.max(bw,2)}" height="14" rx="4" fill="${i<3?C.accent:'#44608F'}" opacity="${i<3?0.95:0.75}"><title>${x.category}：${fmtW(x.gmv)}</title></rect>`;
+    s+=txt(pad.l-10,y+16,x.category,'lbl','end');
+    s+=txt(pad.l+bw+8,y+16,fmtW(x.gmv),'val');
+  });
+  s+=`</svg>`; box.innerHTML=s;
+}
+
+// ---------- 4. 性别环形 ----------
+function drawGender(){
+  const box=el('ch_gender'); if(!box) return;
+  const w=box.clientWidth||300, h=210, cx=w/2, cy=h/2-6, r=Math.min(w*0.29,74), r2=r*0.6;
+  const d=D.gender, tot=d.reduce((a,x)=>a+x.n,0);
+  let a0=-Math.PI/2, s=svg(w,h), lg='';
+  d.forEach((x,i)=>{
+    const ang=x.n/tot*Math.PI*2, a1=a0+ang, col=i?C.a2:C.accent;
+    s+=`<path d="${arc(cx,cy,r,r2,a0,a1)}" fill="${col}" opacity=".92"><title>${x.gender}：${fmtN(x.n)}（${(x.n/tot*100).toFixed(2)}%）</title></path>`;
+    const mid=(a0+a1)/2;
+    s+=txt(cx+Math.cos(mid)*(r+16),cy+Math.sin(mid)*(r+16)+4,(x.n/tot*100).toFixed(2)+'%','val','middle');
+    lg+=`<span><i style="background:${col}"></i>${x.gender} ${fmtN(x.n)}</span>`;
+    a0=a1;
+  });
+  s+=`<text x="${cx}" y="${cy+7}" text-anchor="middle" style="fill:#E8EEF9;font-size:19px;font-weight:700">${fmtN(tot)}</text>`;
+  s+=`</svg>`; box.innerHTML=s+`<div class="legend" style="justify-content:center">${lg}</div>`;
+}
+
+// ---------- 5. 年龄柱状 ----------
+function drawAge(){
+  const box=el('ch_age'); if(!box) return;
+  const w=box.clientWidth||460, h=230, pad={l:40,r:12,t:24,b:40};
+  const d=D.age, max=Math.max(...d.map(x=>x.n))*1.15, iw=w-pad.l-pad.r, ih=h-pad.t-pad.b;
+  const bw=iw/d.length*0.56;
+  let s=svg(w,h);
+  for(let i=0;i<=3;i++){const v=max*i/3,y=pad.t+ih*(1-v/max);s+=`<line class="gl" x1="${pad.l}" y1="${y}" x2="${w-pad.r}" y2="${y}"/>`+txt(pad.l-8,y+4,fmtN(v),'lbl','end');}
+  d.forEach((x,i)=>{
+    const cx=pad.l+iw*(i+0.5)/d.length, bh=ih*x.n/max, y=pad.t+ih-bh;
+    s+=`<rect x="${cx-bw/2}" y="${y}" width="${bw}" height="${bh}" rx="4" fill="${C.good}" opacity=".9"><title>${x.group}：${fmtN(x.n)} 人</title></rect>`;
+    s+=txt(cx,y-7,fmtN(x.n),'val','middle');
+    s+=txt(cx,pad.t+ih+18,x.group,'lbl','middle');
+  });
+  s+=`</svg>`; box.innerHTML=s;
+}
+
+// ---------- 6. 会员树图 ----------
+function drawMember(){
+  const box=el('ch_member'); if(!box) return;
+  const w=box.clientWidth||380, h=250;
+  const d=D.member.slice().sort((a,b)=>b.spent-a.spent), tot=d.reduce((a,x)=>a+x.spent,0);
+  // 竖向切片（面积∝消费额）
+  let x=0, s=svg(w,h), y=0, bh=h;
+  const cols=[C.accent,C.a2,C.a3,C.good,C.warn];
+  d.forEach((it,i)=>{
+    const cw=w*it.spent/tot;
+    s+=`<rect x="${x}" y="${y}" width="${Math.max(cw-3,1)}" height="${bh}" rx="6" fill="${cols[i%cols.length]}" opacity="${0.92-i*0.1}"><title>${it.member_level}：${fmtW(it.spent)}｜${it.users} 人</title></rect>`;
+    if(cw>46){
+      s+=txt(x+cw/2-1.5,y+26,it.member_level,'val','middle');
+      s+=txt(x+cw/2-1.5,y+46,fmtW(it.spent),'lbl','middle');
+      s+=txt(x+cw/2-1.5,y+64,(it.spent/tot*100).toFixed(1)+'%','lbl','middle');
+    }
+    x+=cw;
+  });
+  s+=`</svg>`; box.innerHTML=s+`<div class="legend">${d.map((it,i)=>`<span><i style="background:${cols[i%cols.length]}"></i>${it.member_level} ${it.users}人</span>`).join('')}</div>`;
+}
+
+// ---------- 7. 城市 TOP15 ----------
+function drawCity(){
+  const box=el('ch_city'); if(!box) return;
+  const w=box.clientWidth||1100, rowH=25, h=D.city.length*rowH+22;
+  const pad={l:56,r:96,t:6,b:14}, iw=w-pad.l-pad.r, max=Math.max(...D.city.map(x=>x.n));
+  let s=svg(w,h);
+  D.city.forEach((x,i)=>{
+    const y=pad.t+i*rowH, bw=iw*x.n/max;
+    s+=`<rect x="${pad.l}" y="${y+5}" width="${Math.max(bw,2)}" height="13" rx="4" fill="${C.a2}" opacity="${0.85-i*0.04}"><title>${x.city}：${x.n} 人｜消费 ${fmtW(x.spent)}</title></rect>`;
+    s+=txt(pad.l-8,y+15,x.city,'lbl','end');
+    s+=txt(pad.l+bw+8,y+15,`${x.n} 人`,'val');
+  });
+  s+=`</svg>`; box.innerHTML=s;
+}
+
+// ---------- 8. RFM 表格 ----------
+function drawRfmTable(){
+  const box=el('tb_rfm'); if(!box) return;
+  const d=D.rfm_segments, tot=d.reduce((a,x)=>a+x.users,0);
+  const maxPct=Math.max(...d.map(x=>x.users));
+  let h=`<table><thead><tr><th>用户分层</th><th>人数</th><th>占比</th><th>人均消费</th><th>消费总额</th><th>均 R</th><th>均 F</th></tr></thead><tbody>`;
+  d.forEach(x=>{
+    h+=`<tr><td><i style="display:inline-block;width:7px;height:7px;border-radius:2px;background:${SEGC[x.user_segment]||'#888'};margin-right:7px"></i>${x.user_segment}</td>`;
+    h+=`<td>${fmtN(x.users)}</td>`;
+    h+=`<td class="bar-cell"><div class="bg" style="width:${x.users/maxPct*100}%"></div><span>${(x.users/tot*100).toFixed(2)}%</span></td>`;
+    h+=`<td>${fmtN(x.avg_m)}</td><td>${fmtW(x.total_m)}</td><td>${Math.round(x.avg_r)}</td><td>${x.avg_f.toFixed(1)}</td></tr>`;
+  });
+  h+=`</tbody></table>`; box.innerHTML=h;
+}
+
+// ---------- 9. 分层消费条形 ----------
+function drawSeg(){
+  const box=el('ch_seg'); if(!box) return;
+  const d=D.rfm_segments.slice().sort((a,b)=>b.total_m-a.total_m);
+  const w=box.clientWidth||420, rowH=30, h=d.length*rowH+16;
+  const pad={l:88,r:82,t:4,b:12}, iw=w-pad.l-pad.r, max=Math.max(...d.map(x=>x.total_m));
+  let s=svg(w,h);
+  d.forEach((x,i)=>{
+    const y=pad.t+i*rowH, bw=iw*x.total_m/max;
+    s+=`<rect x="${pad.l}" y="${y+6}" width="${Math.max(bw,2)}" height="15" rx="4" fill="${SEGC[x.user_segment]||'#64748B'}" opacity=".9"><title>${x.user_segment}：${fmtW(x.total_m)}</title></rect>`;
+    s+=txt(pad.l-8,y+18,x.user_segment,'lbl','end');
+    s+=txt(pad.l+bw+8,y+18,fmtW(x.total_m),'val');
+  });
+  s+=`</svg>`; box.innerHTML=s;
+}
+
+// ---------- 10. RFM 散点 ----------
+function drawScatter(){
+  const box=el('ch_scatter'); if(!box) return;
+  const w=box.clientWidth||1100, h=330, pad={l:52,r:16,t:14,b:38};
+  const d=D.rfm_scatter, iw=w-pad.l-pad.r, ih=h-pad.t-pad.b;
+  const fx=d.map(x=>x.f), ry=d.map(x=>x.r);
+  const f0=Math.min(...fx), f1=Math.max(...fx), r0=Math.min(...ry), r1=Math.max(...ry);
+  const X=v=>pad.l+iw*(v-f0)/((f1-f0)||1);
+  const Y=v=>pad.t+ih*(v-r0)/((r1-r0)||1);
+  let s=svg(w,h);
+  for(let i=0;i<=4;i++){
+    const y=pad.t+ih*i/4;
+    s+=`<line class="gl" x1="${pad.l}" y1="${y}" x2="${w-pad.r}" y2="${y}"/>`+txt(pad.l-8,y+4,Math.round(r0+(r1-r0)*i/4),'lbl','end');
+  }
+  for(let i=0;i<=5;i++){
+    const x=pad.l+iw*i/5; s+=txt(x,pad.t+ih+18,Math.round(f0+(f1-f0)*i/5),'lbl','middle');
+  }
+  s+=txt(pad.l+iw/2,h-4,'frequency（消费频次）','lbl','middle');
+  s+=txt(14,pad.t+ih/2,'recency（天）','lbl','middle').replace('<text','<text transform="rotate(-90 14 '+(pad.t+ih/2)+')"');
+  d.forEach(p=>{
+    s+=`<circle cx="${X(p.f)}" cy="${Y(p.r)}" r="2.4" fill="${SEGC[p.s]||'#64748B'}" opacity=".72"><title>${p.s}｜F=${p.f}｜R=${p.r}｜M=${fmtN(p.m)}</title></circle>`;
+  });
+  s+=`</svg>`; box.innerHTML=s;
+  const order=['重要价值用户','重要保持用户','重要挽留用户','重要发展用户','一般价值用户','一般维持用户','新用户','流失用户'];
+  const present=new Set(d.map(p=>p.s));
+  el('lg_scatter').innerHTML=order.filter(k=>present.has(k))
+    .map(k=>`<span><i style="background:${SEGC[k]}"></i>${k}</span>`).join('');
+}
+
+// ---------- 11. 品类卡片 ----------
+function drawChips(){
+  const box=el('cat_chips'); if(!box) return;
+  box.innerHTML=D.category.map((x,i)=>
+    `<div class="chip" style="border-color:${i<3?'rgba(255,107,53,.45)':'var(--line)'}">
+      <b>${x.category}</b><small>${fmtW(x.gmv)} · ${x.prod} 款</small></div>`).join('');
+}
+
+// ---------- 12. 行为漏斗 ----------
+function drawFunnel(){
+  const box=el('ch_funnel'); if(!box) return;
+  const w=box.clientWidth||640, h=280;
+  const d=D.funnel, top=d[0].n, cx=w/2;
+  const maxW=Math.min(w*0.62,420), rowH=54;
+  let s=svg(w,h);
+  d.forEach((x,i)=>{
+    const bw=maxW*x.n/top, y=14+i*rowH;
+    const grad=i<3?C.a2:'#818CF8';
+    s+=`<rect x="${(w-bw)/2}" y="${y}" width="${bw}" height="34" rx="6" fill="${grad}" opacity="${0.95-i*0.09}"><title>${x.step}：${fmtN(x.n)} 次</title></rect>`;
+    s+=txt(cx,y+22,fmtN(x.n),'val','middle').replace('class="val"','class="val" font-weight="700"');
+    s+=txt((w-bw)/2-10,y+22,x.step,'lbl','end');
+    const pct=(x.n/top*100).toFixed(2)+'%';
+    s+=txt((w+bw)/2+10,y+22,pct,'val');
+    if(i>0){
+      const conv=(x.n/d[i-1].n*100).toFixed(1)+'%';
+      s+=txt(cx,y+rowH-6,`↳ 环比 ${conv}`,'lbl','middle');
+    }
+  });
+  s+=`</svg>`; box.innerHTML=s;
+}
+
+// ---------- 13. 品类转化率表 ----------
+function drawCv(){
+  const box=el('tb_cv'); if(!box) return;
+  const d=D.cat_cv.slice().sort((a,b)=>b['有效转化率']-a['有效转化率']);
+  let h=`<table><thead><tr><th>品类</th><th>商品数</th><th>总浏览量</th><th>总销量</th><th>平均转化率</th><th>有效转化率</th></tr></thead><tbody>`;
+  d.forEach(x=>{
+    h+=`<tr><td>${x.category}</td><td>${fmtN(x['商品数'])}</td><td>${fmtN(x['总浏览量'])}</td><td>${fmtN(x['总销量'])}</td>`;
+    h+=`<td>${(x['平均转化率']*100).toFixed(2)}%</td>`;
+    h+=`<td style="color:#FFB08A;font-weight:600">${(x['有效转化率']*100).toFixed(2)}%</td></tr>`;
+  });
+  h+=`</tbody></table>`; box.innerHTML=h;
+}
+
+// ---------- KPI ----------
+function fillKpi(){
+  el('k_gmv').innerHTML = fmtW(D.kpi.gmv).replace(/ (\S+)$/,'<span>$1</span>');
+  el('k_ord').innerHTML = fmtN(D.kpi.orders);
+  el('k_aov').innerHTML = Math.round(D.kpi.aov).toLocaleString()+'<span>元</span>';
+  el('k_arpu').innerHTML = Math.round(D.kpi.arpu).toLocaleString()+'<span>元</span>';
+}
+
+// ---------- 初始化 ----------
+function renderAll(){
+  const p=document.querySelector('.page.on').id;
+  if(p==='p1'){drawMonthly();drawStatus();drawCat();}
+  if(p==='p2'){drawGender();drawAge();drawMember();drawCity();}
+  if(p==='p3'){drawRfmTable();drawSeg();drawScatter();}
+  if(p==='p4'){drawChips();drawFunnel();drawCv();}
+}
+function switchTo(pid){
+  document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x.dataset.p===pid));
+  document.querySelectorAll('.page').forEach(x=>x.classList.toggle('on',x.id===pid));
+  renderAll();
+}
+document.getElementById('tabs').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  switchTo(b.dataset.p);
+  history.replaceState(null,'','#'+b.dataset.p);
+});
+let rt; window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(renderAll,160);});
+fillKpi();
+const boot=location.hash.replace('#','');
+switchTo(['p1','p2','p3','p4'].includes(boot)?boot:'p1');
+</script>
+</body>
+</html>

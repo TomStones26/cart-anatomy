@@ -1,0 +1,6 @@
+﻿表名,总数,name_null,category_null,brand_null,age_null,gender_null,province_null,total_spent_null,order_count_null,consumption_level_null,total_revenue_null,conversion_rate_null,avg_review_score_null,user_id_null,behavior_type_null,behavior_time_null
+products,2000,0.0,0.0,0.0,,,,,,,,,,,,
+users,5000,,,,0.0,0.0,0.0,,,,,,,,,
+user_features,5000,,,,,,,0.0,0.0,0.0,,,,,,
+product_features,2000,,,,,,,,,,0.0,0.0,0.0,,,
+user_behaviors,30000,,,,,,,,,,,,,0.0,0.0,0.0
